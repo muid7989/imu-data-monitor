@@ -98,6 +98,7 @@ let logGraph = [
 		color: 'yellow',
 		drawX: 0,
 	},
+/*
 	{
 		x: LOG_X,
 		y: GRID_SIZE*10,
@@ -108,6 +109,7 @@ let logGraph = [
 		color: 'green',
 		drawX: 0,
 	},
+*/
 ];
 
 const DEBUG = true;
@@ -231,11 +233,12 @@ function draw() {
 	debugY += DEBUG_VIEW_H;
 	text('loss:'+lossCount, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
+/*
 	for (let i=0; i<val.length; i++){
 		text(val[i], DEBUG_VIEW_X, debugY);
 		debugY += DEBUG_VIEW_H;
 	}
-
+*/
 	if (logFlag){
 //		outputBuf[outputIndex][0] = current - dataTime;
 		for (let i=0; i<8; i++){
@@ -271,10 +274,10 @@ function draw() {
 		ball.x = xPos + (prevXPos-xPos)*(dataTime-current)/prevInt;
 		ball.y = zPos + (prevZPos-zPos)*(dataTime-current)/prevInt;
 		outputBuf[outputIndex][0] = xPos;
-		outputBuf[outputIndex][1] = ball.x;
+//		outputBuf[outputIndex][1] = ball.x;
 //		drawGraph(logGraphSpeed, outputBuf[outputIndex][0]);
 		drawGraph(logGraph[2], outputBuf[outputIndex][0]);
-		drawGraph(logGraph[3], outputBuf[outputIndex][1]);
+//		drawGraph(logGraph[3], outputBuf[outputIndex][1]);
 		outputIndex++;
 		if (outputIndex>=DATA_SIZE){
 			outputIndex = 0;
