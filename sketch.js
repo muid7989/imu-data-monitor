@@ -2,17 +2,17 @@ let time;
 let frameCountBuffer = 0;
 let fps = 0;
 
-const CANVAS_W = 960;
-const CANVAS_H = 1280;
+const CANVAS_W = 640;
+const CANVAS_H = 896;
 
 const GRID_SIZE = 64;
 
-const BUTTON_OFFSET = 8;
+const BUTTON_OFFSET = 0;
 const BUTTON_W = GRID_SIZE*3;
 const BUTTON_H = GRID_SIZE*2;
-const BUTTON_X = GRID_SIZE*1;
+const BUTTON_X = GRID_SIZE*0;
 const BUTTON_Y = CANVAS_H-GRID_SIZE*3;
-const BUTTON_M = 24;
+const BUTTON_M = GRID_SIZE*0.5;
 
 // for M5
 const NAME_PRE = 'UART';
@@ -43,29 +43,30 @@ let lossCount = 0;
 let outputBuf = [];
 let outputIndex;
 let dataTime;
+let prevTime;
 
 let calFlag = false;
 let xAccAvr, zAccAvr, xAccVal, zAccVal;
 let xAccAvrSum, xAccAvrCount;
 const ACC_AVR_COUNT = 200;
 const ACC_AVR_EF = 0.002;
-const ACC_EF = 0.0001;
+const ACC_EF = 0.00004;
 let xSpeed, zSpeed;
 const SPEED_AT = 0.98;
 let xPos, zPos;
 let prevXPos, prevZPos, prevInt;
-const POS_EF = 0.95;
-const CX = GRID_SIZE*3;
+//const POS_EF = 0.95;
+const CX = GRID_SIZE*1.5;
 const CY = GRID_SIZE*4;
 const SP_EF = 0.00001;
 
 let ball;
 
-const LOG_W = GRID_SIZE*10;
+const LOG_W = GRID_SIZE*7;
 const LOG_H = GRID_SIZE*4;
-const LOG_X = GRID_SIZE*6;
+const LOG_X = GRID_SIZE*3;
 const LOG_OFFSET = 10;
-const LOG_POINT_SIZE = 3;
+const LOG_POINT_SIZE = 2;
 const LOG_MOVE_X = 1;
 let logGraph = [
 	{
@@ -96,6 +97,7 @@ let logGraph = [
 		offset: 0,
 		max: 300,
 		color: 'yellow',
+		subColor: 'green',
 		drawX: 0,
 	},
 /*
@@ -130,7 +132,7 @@ function graphSetup( graph ){
 
 function setup() {
 	createCanvas(CANVAS_W, CANVAS_H);
-	frameRate(120);
+	frameRate(60);
 	time = millis();
 	rectMode(CENTER);
 
@@ -165,7 +167,7 @@ function setup() {
 	ball = {};
 	ball.x = CX;
 	ball.y = CY;
-	ball.size = 50;
+	ball.size = 30;
 }
 function buttonInit(text, w, h, x, y) {
 	let button = createButton(text);
@@ -198,6 +200,12 @@ function drawGraph(graph, data) {
 		graphSetup(graph);
 	}
 }
+function drawGraphSub(graph, data) {
+	graph.graphics.strokeWeight(LOG_POINT_SIZE);
+	let tY = graph.height - data*(graph.height-graph.offset)/graph.max - graph.offset;
+	graph.graphics.stroke(graph.subColor);
+	graph.graphics.point(graph.drawX, tY);
+}
 function draw() {
 	background(48);
 	let current = millis();
@@ -227,10 +235,12 @@ function draw() {
 	debugY += DEBUG_VIEW_H;
 	text('dataRate'+':'+dataRate, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
+/*
 	text('speed:'+xSpeed, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
 	text('pos:'+xPos, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
+*/
 	text('loss:'+lossCount, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
 /*
@@ -243,6 +253,7 @@ function draw() {
 //		outputBuf[outputIndex][0] = current - dataTime;
 		for (let i=0; i<8; i++){
 			if (drawIndex==dataIndex){
+				console.log(current, dataTime);
 				break;
 			}
 			if (current<dataTime){
@@ -270,14 +281,18 @@ function draw() {
 		}
 		if (current>dataTime){
 			dataTime = current+20;
+			console.log(drawIndex, dataIndex);
 		}
 		ball.x = xPos + (prevXPos-xPos)*(dataTime-current)/prevInt;
 		ball.y = zPos + (prevZPos-zPos)*(dataTime-current)/prevInt;
-		outputBuf[outputIndex][0] = xPos;
+		outputBuf[outputIndex][0] = ball.x;
+		outputBuf[outputIndex][1] = current-prevTime;
 //		outputBuf[outputIndex][1] = ball.x;
 //		drawGraph(logGraphSpeed, outputBuf[outputIndex][0]);
 		drawGraph(logGraph[2], outputBuf[outputIndex][0]);
 //		drawGraph(logGraph[3], outputBuf[outputIndex][1]);
+		drawGraphSub(logGraph[2], outputBuf[outputIndex][1]);
+		prevTime = current;
 		outputIndex++;
 		if (outputIndex>=DATA_SIZE){
 			outputIndex = 0;
