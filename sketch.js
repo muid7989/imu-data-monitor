@@ -3,7 +3,7 @@ let frameCountBuffer = 0;
 let fps = 0;
 
 const CANVAS_W = 640;
-const CANVAS_H = 896;
+const CANVAS_H = 832;
 
 const GRID_SIZE = 64;
 
