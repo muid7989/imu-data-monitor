@@ -44,18 +44,15 @@ let outputBuf = [];
 let outputIndex;
 let dataTime;
 let prevTime;
+let prevSenseTime;
 
 let calFlag = false;
-let xAccAvr, zAccAvr, xAccVal, zAccVal;
-let xAccAvrSum, xAccAvrCount;
 const ACC_AVR_COUNT = 200;
-const ACC_AVR_EF = 0.002;
 const ACC_EF = 0.00004;
-let xSpeed, zSpeed;
+let xSpeed, ySpeed;
 const SPEED_AT = 0.98;
-let xPos, zPos;
-let prevXPos, prevZPos, prevInt;
-//const POS_EF = 0.95;
+let xPos, yPos;
+let prevXPos, prevYPos, prevInt;
 const CX = GRID_SIZE*1.5;
 const CY = GRID_SIZE*4;
 const SP_EF = 0.00001;
@@ -100,18 +97,6 @@ let logGraph = [
 		subColor: 'green',
 		drawX: 0,
 	},
-/*
-	{
-		x: LOG_X,
-		y: GRID_SIZE*10,
-		width: LOG_W,
-		height: GRID_SIZE*4,
-		offset: 0,
-		max: 300,
-		color: 'green',
-		drawX: 0,
-	},
-*/
 ];
 
 const DEBUG = true;
@@ -146,9 +131,9 @@ function setup() {
 	drawIndex = 0;
 	logFlag = false;
 	xPos = CX;
-	zPos = CY;
+	yPos = CY;
 	xSpeed = 0;
-	zSpeed = 0;
+	ySpeed = 0;
 
 	startButton = buttonInit('start', BUTTON_W, BUTTON_H, BUTTON_X, BUTTON_Y);
 	startButton.mousePressed(startFn);
@@ -235,22 +220,9 @@ function draw() {
 	debugY += DEBUG_VIEW_H;
 	text('dataRate'+':'+dataRate, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
-/*
-	text('speed:'+xSpeed, DEBUG_VIEW_X, debugY);
-	debugY += DEBUG_VIEW_H;
-	text('pos:'+xPos, DEBUG_VIEW_X, debugY);
-	debugY += DEBUG_VIEW_H;
-*/
 	text('loss:'+lossCount, DEBUG_VIEW_X, debugY);
 	debugY += DEBUG_VIEW_H;
-/*
-	for (let i=0; i<val.length; i++){
-		text(val[i], DEBUG_VIEW_X, debugY);
-		debugY += DEBUG_VIEW_H;
-	}
-*/
 	if (logFlag){
-//		outputBuf[outputIndex][0] = current - dataTime;
 		for (let i=0; i<8; i++){
 			if (drawIndex==dataIndex){
 				console.log(current, dataTime);
@@ -260,17 +232,17 @@ function draw() {
 				break;
 			}
 			prevXPos = xPos;
-			prevZPos = zPos;
-			prevInt = dataBuf[drawIndex][val.length-1];
+			prevYPos = yPos;
+			prevInt = dataBuf[drawIndex][val.length];
 			dataTime += prevInt;
 			xPos += xSpeed;
-			zPos += zSpeed;
+			yPos += ySpeed;
 			xSpeed *= SPEED_AT;
-			zSpeed *= SPEED_AT;
-			const f = SP_EF * dist(xPos, zPos, CX, CY);
-			xSpeed += dataBuf[drawIndex][2]*ACC_EF + f*(CX-xPos);
-			zSpeed += dataBuf[drawIndex][4]*ACC_EF + f*(CY-zPos);
-			dataBuf[drawIndex][val.length] = xPos;
+			ySpeed *= SPEED_AT;
+			const f = SP_EF * dist(xPos, yPos, CX, CY);
+			xSpeed += dataBuf[drawIndex][1]*ACC_EF + f*(CX-xPos);
+			ySpeed += dataBuf[drawIndex][2]*ACC_EF + f*(CY-yPos);
+			dataBuf[drawIndex][val.length] = yPos-CY;
 			drawGraph(logGraph[0], dataBuf[drawIndex][2]);
 			drawGraph(logGraph[1], dataBuf[drawIndex][val.length]);
 			drawIndex++;
@@ -284,13 +256,10 @@ function draw() {
 			console.log(drawIndex, dataIndex);
 		}
 		ball.x = xPos + (prevXPos-xPos)*(dataTime-current)/prevInt;
-		ball.y = zPos + (prevZPos-zPos)*(dataTime-current)/prevInt;
-		outputBuf[outputIndex][0] = ball.x;
+		ball.y = yPos + (prevYPos-yPos)*(dataTime-current)/prevInt;
+		outputBuf[outputIndex][0] = ball.y-CY;
 		outputBuf[outputIndex][1] = current-prevTime;
-//		outputBuf[outputIndex][1] = ball.x;
-//		drawGraph(logGraphSpeed, outputBuf[outputIndex][0]);
 		drawGraph(logGraph[2], outputBuf[outputIndex][0]);
-//		drawGraph(logGraph[3], outputBuf[outputIndex][1]);
 		drawGraphSub(logGraph[2], outputBuf[outputIndex][1]);
 		prevTime = current;
 		outputIndex++;
@@ -300,14 +269,10 @@ function draw() {
 	}
 	fill(255);
 	noStroke();
-//	circle(xPos, zPos, 50);
 	circle(ball.x, ball.y, ball.size);
 	stroke(255);
 	strokeWeight(3);
-	line(xPos, zPos, CX, CY);
-//	image(logGraphXa.graphics, logGraphXa.x, logGraphXa.y);
-//	image(logGraphSpeed.graphics, logGraphSpeed.x, logGraphSpeed.y);
-//	image(logGraphPos.graphics, logGraphPos.x, logGraphPos.y);
+	line(xPos, yPos, CX, CY);
 	for (let i=0; i<logGraph.length; i++){
 		image(logGraph[i].graphics, logGraph[i].x, logGraph[i].y);
 	}
@@ -357,7 +322,6 @@ async function connectToBle() {
 	function onTxCharacteristicValueChanged(event) {
 		dataCount++;
 		let receivedData = [];
-//		let id = event.target.value.getUint16(0, true);
 		for (let i=0; i<2; i++){
 			receivedData[i] = event.target.value.getUint16(i*2, true);
 		}
@@ -365,17 +329,16 @@ async function connectToBle() {
 			receivedData[i] = event.target.value.getInt16(i*2, false);
 		}
 		let id = receivedData[0];
-		let senseInterval = (receivedData[1]-val[1])/10;
-		if (receivedData[1]<val[1]){
-			senseInterval = (50000+receivedData[1]-val[1])/10;
+		let senseInterval = (receivedData[1]-prevSenseTime)/10;
+		if (receivedData[1]<prevSenseTime){
+			senseInterval = (50000+receivedData[1]-prevSenseTime)/10;
 		}
-//		console.log(id, receivedData);
-		for (let i=0; i<receivedData.length; i++){
-			val[i] = receivedData[i];
+		prevSenseTime = receivedData[1];
+		for (let i=0; i<receivedData.length-2; i++){
+			val[i] = receivedData[i+2];
 			dataBuf[dataIndex][i] = val[i];
 		}
-		val[receivedData.length] = senseInterval;
-		dataBuf[dataIndex][receivedData.length] = senseInterval;
+		dataBuf[dataIndex][val.length] = senseInterval;
 		if (idCheck!=id){
 			idCheck = id+1;
 			lossCount++;
